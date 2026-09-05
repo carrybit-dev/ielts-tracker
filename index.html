@@ -677,7 +677,7 @@ body.spelling-mode .app-container > .spell-panel{display:block!important;max-wid
         'contact me personally'
       ];
       const items=[], notes=[];
-      let cid=0, tid=0, nid=0, noteMode=false, noteBuffer='';
+      let cid=0, tid=0, nid=0, gid=0, noteMode=false, noteBuffer='';
 
       const clean = value => String(value)
         .replace(/[\*_~`]/g,'')
@@ -696,9 +696,17 @@ body.spelling-mode .app-container > .spell-panel{display:block!important;max-wid
         items.push({id:'c'+(cid++),type:'category',name});
       };
       const addTask = text => {
-        const t=clean(text).replace(LIST_PREFIX_RE,'').trim();
-        if(!t) return;
-        items.push({id:'t'+(tid++),type:'task',text:t,completed:false,groupId:null,letter:null});
+        const cleaned=clean(text).replace(LIST_PREFIX_RE,'').trim();
+        if(!cleaned) return;
+        const subtasks = splitIntoSubtasks(cleaned);
+        if (subtasks.length > 1) {
+          const groupId = 'g' + (gid++);
+          subtasks.forEach((sub, idx) => {
+            items.push({id:'t'+(tid++),type:'task',text:sub,completed:false,groupId,letter:String.fromCharCode(97+idx)});
+          });
+        } else {
+          items.push({id:'t'+(tid++),type:'task',text:cleaned,completed:false,groupId:null,letter:null});
+        }
       };
       const flushNote=()=>{
         const text=noteBuffer.replace(/\s+/g,' ').trim();
@@ -1337,12 +1345,12 @@ body.spelling-mode .app-container > .spell-panel{display:block!important;max-wid
       saveCustomSpellingWords(custom);
       SPELLING_WORDS.push(word);
       loadCustomWordsIntoSpelling();
-    document.getElementById('spellAddInput')?.addEventListener('keydown',e=>{ if(e.key==='Enter'){ e.preventDefault(); addSpellingWord(); } });
-    updateSpellCount();
+      updateSpellCount();
       input.value='';
       if(status) status.textContent='✓ Word added.';
       showToast('Spelling word added');
     }
+    document.getElementById('spellAddInput')?.addEventListener('keydown',e=>{ if(e.key==='Enter'){ e.preventDefault(); addSpellingWord(); } });
     function loadCustomWordsIntoSpelling(){
       const custom=loadCustomSpellingWords();
       custom.forEach(word=>{ if(word && !spellingWordExists(word)) SPELLING_WORDS.push(word); });
@@ -1387,9 +1395,6 @@ function renderSpellingMistakes(){
       <span class="spell-mistake-arrow">→</span>
       <span class="spell-mistake-correct">${escapeHtml(m.correct)}</span>
     </div>`).join('');
-}
-function escapeHtml(s){
-  return String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 }
 
 function renderSpellingQuestion(){
